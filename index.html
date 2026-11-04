@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Leafline</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <meta name="theme-color" content="#1b4332">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Leafline">
+    <meta name="apple-mobile-web-app-title" content="Leafline">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <style>
+        :root { --leaf-dark:#0b1f17; --leaf-panel:#122f23; --leaf-panel-2:#1b4332; --leaf-primary:#2d9d6b; --leaf-accent:#40916c; --leaf-light:#95d5b2; }
+        body { background-color: var(--leaf-dark); color: white; }
+        .sidebar { background-color: var(--leaf-panel); }
+        .panel { background-color: var(--leaf-panel-2); }
+        .input-bg { background-color: var(--leaf-panel); }
+        .msg-bubble { background: linear-gradient(135deg, #276749, #1b4332); animation: msgIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+        @keyframes msgIn { from { transform: scale(0.8) translateY(12px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .anim-fade-up { animation: fadeUp 0.6s ease both; }
+        .anim-fade { animation: fadeIn 0.4s ease both; }
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.45; } }
+        .recording { animation: pulse 1s infinite; color: #ef4444; }
+        .wave { display: flex; align-items: flex-end; gap: 3px; height: 18px; }
+        .wave span { width: 4px; background: #ef4444; border-radius: 999px; animation: waveBounce 0.9s ease-in-out infinite; }
+        .wave span:nth-child(2) { animation-delay: 0.1s; } .wave span:nth-child(3) { animation-delay: 0.2s; }
+        .wave span:nth-child(4) { animation-delay: 0.3s; } .wave span:nth-child(5) { animation-delay: 0.4s; }
+        .wave span:nth-child(6) { animation-delay: 0.5s; } .wave span:nth-child(7) { animation-delay: 0.6s; }
+        @keyframes waveBounce { 0%,100% { height: 6px; } 50% { height: 18px; } }
+        #picker-container { position: relative; }
+        emoji-picker { position: absolute; bottom: 80px; left: 0; z-index: 100; width: 320px; height: 350px; max-width: 90vw; }
+        .material-symbols-outlined { font-size: 20px; vertical-align: middle; }
+        .modal { transition: opacity 0.3s ease; }
+        .modal-box { transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #2d6a4f; border-radius: 999px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        @media (max-width: 767px) {
+            .sidebar {
+                position: fixed !important;
+                left: 0; top: 0; bottom: 0;
+                width: 85vw !important;
+                max-width: 320px;
+                min-width: 260px;
+                z-index: 60;
+                transform: translateX(-105%);
+                transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+                box-shadow: 0 0 60px rgba(0,0,0,.5);
+            }
+            .sidebar.open { transform: translateX(0); }
+            .mobile-chat-header { height: 56px !important; padding: 0 12px !important; }
+            .messages { padding: 16px !important; }
+            .input-bar { padding: 12px !important; }
+            .input-wrap { flex-wrap: nowrap !important; }
+            .msg-bubble { max-width: 92% !important; }
+            .msg-bubble audio { width: 100%; min-width: 180px; }
+            .msg-bubble img { max-height: 220px !important; }
+            emoji-picker { left: 0; width: min(90vw, 320px); }
+            .modal-box { margin: 16px; width: calc(100vw - 32px) !important; }
+        }
+        @media (min-width: 768px) {
+            .sidebar { position: relative !important; transform: none !important; }
+            #sidebar-overlay { display: none !important; }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col md:flex-row font-sans overflow-hidden">
+
+<!-- Login Screen -->
+<div id="login-view" class="h-full w-full flex items-center justify-center p-4 anim-fade">
+    <div class="panel p-6 sm:p-8 rounded-3xl shadow-2xl w-full max-w-[320px] text-center border border-[#2d6a4f]/40 anim-fade-up">
+        <h2 class="text-2xl font-bold mb-6 text-[#95d5b2] flex flex-col items-center gap-3">
+            <span class="material-symbols-outlined w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white text-[#1b4332] shadow-xl flex items-center justify-center" style="font-size:64px;">eco</span>
+            Leafline
+        </h2>
+        <input id="username" placeholder="Enter your name" class="w-full input-bg p-3 rounded-xl mb-4 outline-none border border-[#2d6a4f]/50 focus:border-[#95d5b2] transition text-base">
+        <button onclick="login()" class="w-full bg-[#2d9d6b] hover:bg-[#40916c] p-3 rounded-xl font-bold transition active:scale-95">Join Chat</button>
+    </div>
+</div>
+
+<!-- Mobile sidebar overlay -->
+<div id="sidebar-overlay" onclick="toggleSidebar(false)" class="hidden fixed inset-0 bg-black/60 z-50 md:hidden"></div>
+
+<!-- Chat Screen -->
+<div id="chat-view" class="hidden h-full w-full flex">
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar w-72 p-4 flex flex-col border-r border-[#2d6a4f]/40 h-full">
+        <h2 class="text-lg font-bold mb-4 text-[#d8f3dc] flex items-center gap-3 anim-fade-up">
+            <span class="material-symbols-outlined w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white text-[#1b4332] shadow-lg flex items-center justify-center" style="font-size:44px;">eco</span>Leafline
+            <span class="ml-auto md:hidden cursor-pointer p-1" onclick="toggleSidebar(false)"><span class="material-symbols-outlined">close</span></span>
+        </h2>
+        <h3 class="text-xs text-[#95d5b2] uppercase font-bold mb-2">Group Access</h3>
+        <div class="flex gap-2 mb-6 anim-fade-up" style="animation-delay:.1s">
+            <button onclick="toggleModal('create-modal')" class="flex-1 input-bg hover:bg-[#1b4332] p-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition active:scale-95"><span class="material-symbols-outlined">group_add</span> Create</button>
+            <button onclick="toggleModal('join-modal')" class="flex-1 input-bg hover:bg-[#1b4332] p-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition active:scale-95"><span class="material-symbols-outlined">meeting_room</span> Join</button>
+        </div>
+        <h3 class="text-xs text-[#95d5b2] uppercase font-bold mb-2">Private Chats</h3>
+        <div id="user-list" class="flex-1 space-y-2 overflow-y-auto"></div>
+    </div>
+
+    <!-- Main Column -->
+    <div class="flex-1 flex flex-col bg-[#081712] min-w-0">
+        <div class="chat-header mobile-chat-header p-4 panel border-b border-[#2d6a4f]/40 flex items-center gap-3 h-14">
+            <button onclick="toggleSidebar()" class="md:hidden p-2 hover:bg-white/10 rounded-full"><span class="material-symbols-outlined">menu</span></button>
+            <span class="material-symbols-outlined w-9 h-9 rounded-full bg-white text-[#1b4332] md:hidden flex items-center justify-center" style="font-size:24px;">eco</span>
+            <span id="room-display" class="font-bold text-[#95d5b2] truncate">general</span>
+        </div>
+
+        <div id="messages" class="messages flex-1 overflow-y-auto p-4 sm:p-6 space-y-4"></div>
+
+        <div id="preview-box" class="hidden px-4 sm:px-6 pb-2 anim-fade-up">
+            <img id="img-preview" class="max-h-20 rounded-xl border border-[#2d6a4f]">
+            <button onclick="cancelPreview()" class="text-xs text-red-400 mt-1">Remove</button>
+        </div>
+
+        <!-- Voice preview BEFORE sending -->
+        <div id="voice-preview" class="hidden px-4 sm:px-6 pb-2 anim-fade-up">
+            <div class="panel border border-[#2d6a4f]/60 rounded-2xl p-3 flex flex-col sm:flex-row sm:items-center gap-3">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-[#95d5b2]">graphic_eq</span>
+                    <span class="text-sm text-[#d8f3dc] font-medium">Voice message</span>
+                </div>
+                <audio id="voice-preview-audio" controls class="flex-1 h-9 w-full"></audio>
+                <span id="voice-preview-time" class="text-xs text-[#95d5b2]"></span>
+                <div class="flex gap-2">
+                    <button onclick="sendVoicePreview()" class="bg-[#2d9d6b] hover:bg-[#40916c] px-4 py-2 rounded-xl text-sm font-bold transition active:scale-95">Send</button>
+                    <button onclick="cancelVoicePreview()" class="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl text-sm font-bold transition active:scale-95">Discard</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-bar p-3 sm:p-4 panel" id="picker-container">
+            <emoji-picker id="emoji-picker" class="hidden"></emoji-picker>
+            <form id="form" class="input-wrap flex gap-2 items-center">
+                <button type="button" onclick="toggleEmoji()" class="p-2 hover:bg-white/10 rounded-full transition active:scale-90 shrink-0"><span class="material-symbols-outlined">sentiment_satisfied</span></button>
+                <input id="input" class="flex-1 min-w-0 input-bg p-3 rounded-xl outline-none focus:ring-2 focus:ring-[#40916c] transition text-base" placeholder="Message...">
+                <span id="recording-ui" class="hidden items-center gap-2 shrink-0">
+                    <span class="wave"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span>
+                    <span class="text-red-400 text-sm font-bold recording">Recording… <span id="rec-time">0:00</span></span>
+                    <button type="button" onclick="stopRecording()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-xl text-sm font-bold transition active:scale-95">Stop</button>
+                </span>
+                <button type="button" id="recordBtn" class="p-2 hover:bg-white/10 rounded-full transition active:scale-90 shrink-0"><span class="material-symbols-outlined">mic</span></button>
+                <input type="file" id="fileInput" class="hidden" onchange="showPreview(event)">
+                <label for="fileInput" class="p-2 cursor-pointer hover:bg-white/10 rounded-full transition active:scale-90 shrink-0"><span class="material-symbols-outlined">attach_file</span></label>
+                <button type="submit" class="bg-[#2d9d6b] hover:bg-[#40916c] px-4 sm:px-6 py-2 rounded-xl font-bold transition active:scale-95 shrink-0"><span class="material-symbols-outlined">send</span></button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<div id="create-modal" class="modal hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+    <div class="modal-box panel p-6 rounded-2xl w-full max-w-xs border border-[#2d6a4f]/40">
+        <h3 class="text-white font-bold mb-4">Create Group</h3>
+        <input id="new-group-name" placeholder="Group Name" class="w-full input-bg p-2 rounded-xl mb-2 text-sm outline-none">
+        <input id="new-group-key" type="password" placeholder="Key" class="w-full input-bg p-2 rounded-xl mb-4 text-sm outline-none">
+        <div class="flex gap-2">
+            <button onclick="createGroup()" class="flex-1 bg-[#2d9d6b] p-2 rounded-xl text-sm font-bold">Create</button>
+            <button onclick="toggleModal('create-modal')" class="flex-1 bg-white/10 p-2 rounded-xl text-sm font-bold">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div id="join-modal" class="modal hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+    <div class="modal-box panel p-6 rounded-2xl w-full max-w-xs border border-[#2d6a4f]/40">
+        <h3 class="text-white font-bold mb-4">Join Group</h3>
+        <input id="join-group-name" placeholder="Group Name" class="w-full input-bg p-2 rounded-xl mb-2 text-sm outline-none">
+        <input id="join-group-key" type="password" placeholder="Key" class="w-full input-bg p-2 rounded-xl mb-4 text-sm outline-none">
+        <div class="flex gap-2">
+            <button onclick="joinGroup()" class="flex-1 bg-[#2d9d6b] p-2 rounded-xl text-sm font-bold">Join</button>
+            <button onclick="toggleModal('join-modal')" class="flex-1 bg-white/10 p-2 rounded-xl text-sm font-bold">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    let currentUser = '', currentRoom = 'general', mediaRecorder, audioChunks = [], recordTimer = null, recordSeconds = 0;
+    let pendingVoiceBlob = null, pendingVoiceUrl = null, pendingVoiceDuration = '';
+
+    function fmt(s) { return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); }
+
+    function login() {
+        currentUser = document.getElementById('username').value.trim();
+        if (!currentUser) { alert('Please enter a username'); return; }
+        socket.emit('login', currentUser);
+        document.getElementById('login-view').classList.add('hidden');
+        document.getElementById('chat-view').classList.remove('hidden');
+        socket.emit('join', 'general');
+    }
+
+    function toggleSidebar(force) {
+        const sb = document.getElementById('sidebar');
+        const ov = document.getElementById('sidebar-overlay');
+        const open = typeof force === 'boolean' ? force : !sb.classList.contains('open');
+        sb.classList.toggle('open', open);
+        ov.classList.toggle('hidden', !open);
+    }
+
+    function toggleModal(id) {
+        const m = document.getElementById(id);
+        const box = m.querySelector('.modal-box');
+        if (m.classList.contains('hidden')) {
+            m.classList.remove('hidden');
+            box.style.transform = 'scale(0.9)'; box.style.opacity = '0';
+            requestAnimationFrame(() => { box.style.transform = 'scale(1)'; box.style.opacity = '1'; });
+        } else {
+            box.style.transform = 'scale(0.9)'; box.style.opacity = '0';
+            setTimeout(() => m.classList.add('hidden'), 250);
+        }
+    }
+
+    function createGroup() {
+        const room = document.getElementById('new-group-name').value.trim();
+        const key = document.getElementById('new-group-key').value;
+        if (room && key) { socket.emit('create-group', { room, key }); toggleModal('create-modal'); }
+    }
+
+    function joinGroup() {
+        const room = document.getElementById('join-group-name').value.trim();
+        const key = document.getElementById('join-group-key').value;
+        if (room && key) { socket.emit('join-group', { room, key }); toggleModal('join-modal'); }
+    }
+
+    socket.on('join-command', (room) => socket.emit('join', room));
+    socket.on('join-room', (room) => socket.emit('join', room));
+    socket.on('error-msg', (msg) => alert(msg));
+    socket.on('room-changed', (room) => {
+        currentRoom = room;
+        document.getElementById('room-display').innerText = room;
+        document.getElementById('messages').innerHTML = `<div class="text-center text-[#95d5b2]/60 italic anim-fade-up">Joined ${room}</div>`;
+        if (window.innerWidth < 768) toggleSidebar(false);
+    });
+
+    function showPreview(e) {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                document.getElementById('img-preview').src = ev.target.result;
+                document.getElementById('preview-box').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+    function cancelPreview() {
+        document.getElementById('fileInput').value = '';
+        document.getElementById('preview-box').classList.add('hidden');
+    }
+
+    async function startRecording() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+            mediaRecorder.onstop = () => {
+                stream.getTracks().forEach(t => t.stop());
+                pendingVoiceBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                pendingVoiceUrl = URL.createObjectURL(pendingVoiceBlob);
+                pendingVoiceDuration = `(${fmt(recordSeconds)})`;
+                const a = document.getElementById('voice-preview-audio');
+                a.src = pendingVoiceUrl;
+                document.getElementById('voice-preview-time').innerText = pendingVoiceDuration;
+                document.getElementById('voice-preview').classList.remove('hidden');
+                document.getElementById('recording-ui').classList.add('hidden');
+                document.getElementById('recording-ui').classList.remove('flex');
+                document.getElementById('recordBtn').classList.remove('recording');
+                clearInterval(recordTimer);
+            };
+            mediaRecorder.start();
+            recordSeconds = 0;
+            document.getElementById('rec-time').innerText = '0:00';
+            const ui = document.getElementById('recording-ui');
+            ui.classList.remove('hidden'); ui.classList.add('flex');
+            document.getElementById('recordBtn').classList.add('recording');
+            recordTimer = setInterval(() => { recordSeconds++; document.getElementById('rec-time').innerText = fmt(recordSeconds); }, 1000);
+        } catch (err) { alert('Microphone permission denied'); }
+    }
+
+    function stopRecording() {
+        if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+    }
+
+    async function sendVoicePreview() {
+        if (!pendingVoiceBlob) return;
+        const fd = new FormData(); fd.append('file', pendingVoiceBlob, 'voice.webm');
+        const res = await fetch('/upload', { method: 'POST', body: fd });
+        const data = await res.json();
+        socket.emit('chat message', { user: currentUser, text: 'AUDIO:' + data.fileUrl, room: currentRoom });
+        cancelVoicePreview();
+    }
+
+    function cancelVoicePreview() {
+        if (pendingVoiceUrl) URL.revokeObjectURL(pendingVoiceUrl);
+        pendingVoiceBlob = null; pendingVoiceUrl = null;
+        document.getElementById('voice-preview-audio').src = '';
+        document.getElementById('voice-preview').classList.add('hidden');
+    }
+
+    document.getElementById('recordBtn').onclick = () => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') stopRecording();
+        else startRecording();
+    };
+
+    document.getElementById('form').onsubmit = async (e) => {
+        e.preventDefault();
+        const file = document.getElementById('fileInput').files[0];
+        const input = document.getElementById('input');
+        if (file) {
+            const fd = new FormData(); fd.append('file', file);
+            const res = await fetch('/upload', { method: 'POST', body: fd });
+            const data = await res.json();
+            socket.emit('chat message', { user: currentUser, text: 'FILE:' + data.fileUrl + '|' + data.fileName, room: currentRoom });
+            cancelPreview();
+        } else if (input.value.trim()) {
+            socket.emit('chat message', { user: currentUser, text: input.value, room: currentRoom });
+            input.value = '';
+        }
+    };
+
+    socket.on('chat message', (data) => {
+        const div = document.createElement('div');
+        div.className = 'msg-bubble p-3 rounded-2xl shadow w-fit';
+        let content = data.text;
+        if (data.text.startsWith('FILE:')) {
+            const [url, name] = data.text.replace('FILE:', '').split('|');
+            content = /\.(jpg|jpeg|png|gif|webp)$/i.test(name)
+                ? `<a href="${url}" target="_blank"><img src="${url}" class="max-w-full max-h-64 rounded-xl mt-2 object-contain"></a>`
+                : `<a href="${url}" download class="text-white underline">📎 ${name}</a>`;
+        } else if (data.text.startsWith('AUDIO:')) {
+            content = `<audio controls src="${data.text.replace('AUDIO:', '')}" class="mt-2 w-full"></audio>`;
+        }
+        div.innerHTML = `<p class="text-xs text-[#95d5b2]">${data.user}</p><p>${content}</p>`;
+        document.getElementById('messages').appendChild(div);
+        div.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    socket.on('updateUserList', (users) => {
+        document.getElementById('user-list').innerHTML = Object.values(users)
+            .filter(u => u !== currentUser)
+            .map(u => `<div onclick="startPrivateChat('${u}')" class="p-2 hover:bg-white/10 rounded-xl cursor-pointer text-sm text-gray-200 transition active:scale-95">● ${u}</div>`)
+            .join('');
+    });
+
+    function startPrivateChat(u) {
+        currentRoom = [currentUser, u].sort().join('_');
+        socket.emit('join', currentRoom);
+    }
+
+    const picker = document.getElementById('emoji-picker');
+    picker.addEventListener('emoji-click', e => document.getElementById('input').value += e.detail.emoji.unicode);
+    function toggleEmoji() { picker.classList.toggle('hidden'); }
+
+    document.getElementById('username').addEventListener('keypress', e => { if (e.key === 'Enter') login(); });
+</script>
+</body>
+</html>
